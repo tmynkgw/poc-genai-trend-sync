@@ -100,6 +100,7 @@ export interface RawArticle {
 
 /** LLMで再構成されたコンテンツ */
 export interface ReconstructedContent {
+  titleJa: string;          // 記事タイトルの日本語訳
   overview: string;         // ①概要（1〜2文）
   technicalImpact: string;  // ②技術的インパクト・注目ポイント
   context: string;          // ③関連する背景・文脈
@@ -175,7 +176,7 @@ stateDiagram-v2
 
 | プロパティ | 型 | 内容 |
 |-----------|-----|------|
-| Title | title | 記事タイトル |
+| Title | title | 記事タイトル（日本語訳） |
 | Source | select | ソース企業名 (OpenAI / Anthropic / Google DeepMind) |
 | URL | url | 元記事URL（重複判定キー） |
 | PublishedAt | date | 記事公開日 |
@@ -267,7 +268,7 @@ class ContentReconstructor {
 **プロンプト設計（概略）**:
 - System: "あなたはAIトレンドを読者に伝えるテックライター。〜（スタイル・長さ・日本語指定）"
 - User: 記事タイトル・公開日・ソース名・本文
-- 出力: 構造化JSON (`{ overview, technicalImpact, context, insights, imagePrompt }`) を Gemini の **Structured Output（responseSchema）** で強制する
+- 出力: 構造化JSON (`{ titleJa, overview, technicalImpact, context, insights, imagePrompt }`) を Gemini の **Structured Output（responseSchema）** で強制する
 
 **タイムアウト**: 30秒（非機能要件より）
 **リトライ**: 一時的なAPIエラー（5xx / rate limit）のみ最大2回、指数バックオフ
