@@ -1,0 +1,72 @@
+name: Weekly AI Trend Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # JST 月曜 9:00 = UTC 月曜 0:00
+  workflow_dispatch:
+    inputs:
+      max_articles:
+        description: 'Max articles per source'
+        required: false
+        default: '5'
+      lookback_days:
+        description: 'Number of days to look back'
+        required: false
+        default: '7'
+      test_mode:
+        description: 'Run in test mode'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: genai-trend-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run sync
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_DATABASE_ID_TEST: ${{ secrets.NOTION_DATABASE_ID_TEST }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MAX_ARTICLES: ${{ github.event.inputs.max_articles || '5' }}
+          LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '7' }}
+          TEST_MODE: ${{ github.event.inputs.test_mode || 'false' }}
+          # RSSフィードURLのオーバーライド（未設定の場合はsources.jsonのデフォルト値を使用）
+          FEED_URL_OPENAI: ${{ vars.FEED_URL_OPENAI }}
+          FEED_URL_ANTHROPIC: ${{ vars.FEED_URL_ANTHROPIC }}
+          FEED_URL_GOOGLE_DEEPMIND: ${{ vars.FEED_URL_GOOGLE_DEEPMIND }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+            ARGS="$ARGS --test"
+          fi
+          node dist/cli/index.js $ARGS \
+            --max-articles ${{ github.event.inputs.max_articles || '5' }} \
+            --lookback-days ${{ github.event.inputs.lookback_days || '7' }}
