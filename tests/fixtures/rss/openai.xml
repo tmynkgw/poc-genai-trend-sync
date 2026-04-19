@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>OpenAI News</title>
+    <link>https://openai.com</link>
+    <description>OpenAI News</description>
+    <item>
+      <title>GPT-5 Released</title>
+      <link>https://openai.com/blog/gpt-5</link>
+      <pubDate>Mon, 14 Apr 2026 00:00:00 +0000</pubDate>
+      <description>GPT-5 is our most capable model yet, with significant improvements in reasoning.</description>
+    </item>
+    <item>
+      <title>Old Article</title>
+      <link>https://openai.com/blog/old-article</link>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+      <description>This is an old article that should be filtered out.</description>
+    </item>
+  </channel>
+</rss>

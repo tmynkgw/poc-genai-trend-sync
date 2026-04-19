@@ -1,0 +1,19 @@
+{
+  "sources": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "feedUrl": "https://openai.com/news/rss.xml"
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "feedUrl": "https://raw.githubusercontent.com/0xSMW/rss-feeds/main/feeds/feed_anthropic_news.xml"
+    },
+    {
+      "id": "google-deepmind",
+      "name": "Google DeepMind",
+      "feedUrl": "https://deepmind.google/blog/rss.xml"
+    }
+  ]
+}

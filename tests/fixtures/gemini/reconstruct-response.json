@@ -1,0 +1,8 @@
+{
+  "titleJa": "GPT-5リリース：OpenAIの新世代モデル",
+  "overview": "OpenAIがGPT-5をリリースした。これまでで最も高性能なモデルであり、推論能力に顕著な改善が見られる。",
+  "technicalImpact": "GPT-5は推論、コーディング、マルチモーダル理解において大幅な性能向上を実現しており、AIアシスタントや開発ツールへの影響が期待される。",
+  "context": "OpenAIは継続的にGPTシリーズを進化させており、GPT-4から約1年での後継モデルリリースとなる。",
+  "insights": "生成AIの進化が加速する中、企業のAI活用戦略においてモデル選定が重要な競争要因となっている。",
+  "imagePrompt": "A futuristic neural network visualization showing advanced artificial intelligence processing streams of data, with interconnected nodes glowing in blue and purple, representing the complex reasoning capabilities of GPT-5. Abstract digital landscape with flowing information patterns."
+}

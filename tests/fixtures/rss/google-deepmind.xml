@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Google DeepMind Blog</title>
+    <link>https://deepmind.google</link>
+    <description>Google DeepMind Blog</description>
+    <item>
+      <title>Gemini 3.0 Ultra</title>
+      <link>https://deepmind.google/blog/gemini-3</link>
+      <pubDate>Wed, 16 Apr 2026 00:00:00 +0000</pubDate>
+      <description>Gemini 3.0 Ultra achieves new state-of-the-art performance on all major benchmarks.</description>
+    </item>
+  </channel>
+</rss>
