@@ -6,10 +6,12 @@ import {
   DEFAULT_GEMINI_IMAGE_MODEL,
 } from '../domain/constants.js';
 
-export const envSchema = z.object({
+export const envSchema = z
+  .object({
   GEMINI_API_KEY: z.string().min(1),
   NOTION_API_KEY: z.string().min(1),
-  NOTION_DATABASE_ID: z.string().min(1),
+  NOTION_DATABASE_ID: z.string().min(1).optional(),
+  NOTION_PARENT_PAGE_ID: z.string().min(1).optional(),
   NOTION_DATABASE_ID_TEST: z.string().optional(),
   GITHUB_TOKEN: z.string().min(1),
   GITHUB_REPOSITORY: z.string().regex(/^[^/]+\/[^/]+$/),
@@ -22,6 +24,10 @@ export const envSchema = z.object({
   FEED_URL_OPENAI: z.string().url().optional(),
   FEED_URL_ANTHROPIC: z.string().url().optional(),
   FEED_URL_GOOGLE_DEEPMIND: z.string().url().optional(),
-});
+})
+.refine(
+  (env) => env.NOTION_DATABASE_ID || env.NOTION_PARENT_PAGE_ID,
+  { message: 'NOTION_DATABASE_ID または NOTION_PARENT_PAGE_ID のいずれかを設定してください' },
+);
 
 export type EnvConfig = z.infer<typeof envSchema>;

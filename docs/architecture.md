@@ -197,8 +197,9 @@ permissions:
 **必要な Secrets**:
 - `GEMINI_API_KEY`
 - `NOTION_API_KEY`
-- `NOTION_DATABASE_ID`
-- `NOTION_DATABASE_ID_TEST`（テストモード時）
+- `NOTION_DATABASE_ID`（オプション。設定済みなら DB 自動生成をスキップ）
+- `NOTION_PARENT_PAGE_ID`（`NOTION_DATABASE_ID` 未設定時は必須。DB 自動生成先の親ページ ID）
+- `NOTION_DATABASE_ID_TEST`（テストモード時にオプション）
 
 **ワークフローの基本ステップ**:
 1. `actions/checkout@v4`
@@ -257,7 +258,9 @@ GitHub Actions `ubuntu-latest`（2core, 7GB RAM, 14GB SSD）を前提。
 |---------|---------|-------------------|
 | `GEMINI_API_KEY` | GitHub Secrets | `process.env.GEMINI_API_KEY`（zodで必須検証） |
 | `NOTION_API_KEY` | GitHub Secrets | 同上 |
-| `NOTION_DATABASE_ID` / `_TEST` | GitHub Secrets | 同上 |
+| `NOTION_DATABASE_ID` | GitHub Secrets | オプション。設定済みなら自動生成スキップ |
+| `NOTION_PARENT_PAGE_ID` | GitHub Secrets | `NOTION_DATABASE_ID` 未設定時の DB 生成先 |
+| `NOTION_DATABASE_ID_TEST` | GitHub Secrets | テストモード時のオプション |
 | `GITHUB_TOKEN` | Actions 自動注入 | 画像アップロード用、`contents: write` 権限のみ付与 |
 
 **ルール**:
@@ -325,7 +328,8 @@ GitHub Actions `ubuntu-latest`（2core, 7GB RAM, 14GB SSD）を前提。
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   NOTION_API_KEY: z.string().min(1),
-  NOTION_DATABASE_ID: z.string().min(1),
+  NOTION_DATABASE_ID: z.string().min(1).optional(),      // オプション: 設定済みなら DB 自動生成スキップ
+  NOTION_PARENT_PAGE_ID: z.string().min(1).optional(),   // NOTION_DATABASE_ID 未設定時の DB 生成先
   NOTION_DATABASE_ID_TEST: z.string().optional(),
   GITHUB_TOKEN: z.string().min(1),
   GITHUB_REPOSITORY: z.string().regex(/^[^/]+\/[^/]+$/), // owner/repo
@@ -334,7 +338,10 @@ const envSchema = z.object({
   TEST_MODE: z.coerce.boolean().default(false),
   GEMINI_TEXT_MODEL: z.string().default('gemini-2.5-pro'),
   GEMINI_IMAGE_MODEL: z.string().default('gemini-2.5-flash-image'),
-});
+}).refine(
+  (env) => env.NOTION_DATABASE_ID || env.NOTION_PARENT_PAGE_ID,
+  { message: 'NOTION_DATABASE_ID または NOTION_PARENT_PAGE_ID のいずれかを設定してください' }
+);
 ```
 
 ---

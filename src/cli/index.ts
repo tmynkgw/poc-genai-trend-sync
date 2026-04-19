@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     throw err;
   }
 
-  const config = configLoader.loadExecutionConfig(
+  const partialConfig = configLoader.loadExecutionConfig(
     { maxArticles: args.maxArticles, lookbackDays: args.lookbackDays, test: args.test },
     env,
   );
@@ -49,6 +49,23 @@ async function main(): Promise<void> {
   const geminiClient = new GeminiClient(env.GEMINI_API_KEY);
   const imageGenClient = new ImageGenClient(env.GEMINI_API_KEY);
   const notionClient = new NotionClient(env.NOTION_API_KEY);
+
+  let notionDatabaseId: string;
+  try {
+    notionDatabaseId = await configLoader.resolveNotionDatabaseId(
+      env,
+      notionClient,
+      partialConfig.testMode,
+    );
+  } catch (err) {
+    if (err instanceof ConfigError) {
+      logger.fatal({ component: 'CLI', err }, err.message);
+      process.exit(1);
+    }
+    throw err;
+  }
+
+  const config = { ...partialConfig, notionDatabaseId };
   const imageHostClient = new ImageHostClient(env.GITHUB_TOKEN, env.GITHUB_REPOSITORY);
 
   const collector = new ArticleCollector(rssClient);

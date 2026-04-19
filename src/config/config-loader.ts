@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { envSchema } from './env-schema.js';
 import type { ExecutionConfig, RssSource } from '../domain/types.js';
 import { ConfigError } from '../domain/errors.js';
+import type { NotionClient } from '../infra/notion-client.js';
+import { NotionSetupService } from '../services/notion-setup.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +37,7 @@ export class ConfigLoader {
     return result.data;
   }
 
-  loadExecutionConfig(args: CliArgs, env: z.infer<typeof envSchema>): ExecutionConfig {
+  loadExecutionConfig(args: CliArgs, env: z.infer<typeof envSchema>): Omit<ExecutionConfig, 'notionDatabaseId'> & { notionDatabaseId: string | undefined; notionParentPageId?: string } {
     const testMode = args.test ?? env.TEST_MODE;
     const notionDatabaseId = testMode
       ? (env.NOTION_DATABASE_ID_TEST ?? env.NOTION_DATABASE_ID)
@@ -46,7 +48,32 @@ export class ConfigLoader {
       lookbackDays: args.lookbackDays ?? env.LOOKBACK_DAYS,
       testMode,
       notionDatabaseId,
+      notionParentPageId: env.NOTION_PARENT_PAGE_ID,
     };
+  }
+
+  async resolveNotionDatabaseId(
+    env: z.infer<typeof envSchema>,
+    notionClient: NotionClient,
+    testMode: boolean,
+  ): Promise<string> {
+    const dbId = testMode
+      ? (env.NOTION_DATABASE_ID_TEST ?? env.NOTION_DATABASE_ID)
+      : env.NOTION_DATABASE_ID;
+
+    if (dbId) {
+      return dbId;
+    }
+
+    const parentPageId = env.NOTION_PARENT_PAGE_ID;
+    if (!parentPageId) {
+      throw new ConfigError(
+        'NOTION_DATABASE_ID または NOTION_PARENT_PAGE_ID のいずれかを設定してください',
+      );
+    }
+
+    const setupService = new NotionSetupService(notionClient);
+    return setupService.findOrCreateDatabase(parentPageId, new Date());
   }
 
   loadSources(env: z.infer<typeof envSchema>): RssSource[] {

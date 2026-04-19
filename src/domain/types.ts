@@ -27,6 +27,7 @@ export interface ExecutionConfig {
   lookbackDays: number;
   testMode: boolean;
   notionDatabaseId: string;
+  notionParentPageId?: string;
 }
 
 export interface RssSource {

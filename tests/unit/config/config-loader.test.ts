@@ -14,6 +14,11 @@ function stubValidEnv() {
   vi.stubEnv('GITHUB_REPOSITORY', 'owner/repo');
 }
 
+const mockNotionClient = {
+  searchDatabase: vi.fn(),
+  createDatabase: vi.fn(),
+};
+
 describe('ConfigLoader.loadEnv', () => {
   it('有効な環境変数からEnvConfigを返す', () => {
     stubValidEnv();
@@ -26,6 +31,25 @@ describe('ConfigLoader.loadEnv', () => {
 
   it('必須環境変数が欠落している場合 ConfigError を投げる', () => {
     vi.stubEnv('GEMINI_API_KEY', '');
+    expect(() => new ConfigLoader().loadEnv()).toThrow(ConfigError);
+  });
+
+  it('NOTION_PARENT_PAGE_ID のみ設定でも有効な環境変数として通る', () => {
+    vi.stubEnv('GEMINI_API_KEY', 'gemini-key');
+    vi.stubEnv('NOTION_API_KEY', 'notion-key');
+    vi.stubEnv('NOTION_PARENT_PAGE_ID', 'parent-id');
+    vi.stubEnv('GITHUB_TOKEN', 'gh-token');
+    vi.stubEnv('GITHUB_REPOSITORY', 'owner/repo');
+    const env = new ConfigLoader().loadEnv();
+    expect(env.NOTION_PARENT_PAGE_ID).toBe('parent-id');
+    expect(env.NOTION_DATABASE_ID).toBeUndefined();
+  });
+
+  it('NOTION_DATABASE_ID も NOTION_PARENT_PAGE_ID も未設定の場合 ConfigError を投げる', () => {
+    vi.stubEnv('GEMINI_API_KEY', 'gemini-key');
+    vi.stubEnv('NOTION_API_KEY', 'notion-key');
+    vi.stubEnv('GITHUB_TOKEN', 'gh-token');
+    vi.stubEnv('GITHUB_REPOSITORY', 'owner/repo');
     expect(() => new ConfigLoader().loadEnv()).toThrow(ConfigError);
   });
 });
@@ -42,6 +66,12 @@ const baseEnv = {
   TEST_MODE: false,
   GEMINI_TEXT_MODEL: 'gemini-2.5-pro',
   GEMINI_IMAGE_MODEL: 'gemini-2.0-flash-preview-image-generation',
+};
+
+const baseEnvWithParent = {
+  ...baseEnv,
+  NOTION_DATABASE_ID: undefined,
+  NOTION_PARENT_PAGE_ID: 'parent-page-id',
 };
 
 describe('ConfigLoader.loadExecutionConfig', () => {
@@ -112,5 +142,46 @@ describe('ConfigLoader.loadSources', () => {
     const sources = loader.loadSources(baseEnv);
     expect(sources.map((s) => s.id)).toEqual(['openai', 'anthropic', 'google-deepmind']);
     expect(sources.map((s) => s.name)).toEqual(['OpenAI', 'Anthropic', 'Google DeepMind']);
+  });
+});
+
+describe('ConfigLoader.resolveNotionDatabaseId', () => {
+  const loader = new ConfigLoader();
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('NOTION_DATABASE_ID 設定済みの場合はそのまま返し NotionSetupService を呼ばない', async () => {
+    const result = await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, false);
+    expect(result).toBe('prod-db');
+    expect(mockNotionClient.searchDatabase).not.toHaveBeenCalled();
+  });
+
+  it('テストモード時は NOTION_DATABASE_ID_TEST を返す', async () => {
+    const result = await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, true);
+    expect(result).toBe('test-db');
+    expect(mockNotionClient.searchDatabase).not.toHaveBeenCalled();
+  });
+
+  it('NOTION_DATABASE_ID 未設定時は NotionSetupService.findOrCreateDatabase を呼ぶ', async () => {
+    mockNotionClient.searchDatabase.mockResolvedValue('auto-created-db-id');
+    const result = await loader.resolveNotionDatabaseId(
+      baseEnvWithParent as never,
+      mockNotionClient as never,
+      false,
+    );
+    expect(result).toBe('auto-created-db-id');
+    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith(
+      'parent-page-id',
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}-GenAI-Trend-News$/),
+    );
+  });
+
+  it('NOTION_DATABASE_ID も NOTION_PARENT_PAGE_ID も未設定の場合 ConfigError を投げる', async () => {
+    const envWithout = { ...baseEnv, NOTION_DATABASE_ID: undefined, NOTION_PARENT_PAGE_ID: undefined };
+    await expect(
+      loader.resolveNotionDatabaseId(envWithout as never, mockNotionClient as never, false),
+    ).rejects.toThrow(ConfigError);
   });
 });

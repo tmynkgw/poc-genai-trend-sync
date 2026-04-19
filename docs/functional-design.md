@@ -174,6 +174,22 @@ stateDiagram-v2
 
 ### Notionデータベース・スキーマ
 
+#### データベース命名規則
+
+データベース名は **`YYYY-MM-DD-GenAI-Trend-News`**（実行日の日付）形式とする。
+例: `2026-04-21-GenAI-Trend-News`
+
+#### 自動生成の動作
+
+| 起動時の状態 | 動作 |
+|-------------|------|
+| `NOTION_DATABASE_ID` 設定済み | 指定 DB をそのまま使用（自動生成スキップ） |
+| `NOTION_DATABASE_ID` 未設定 + 同名 DB あり | 既存 DB を再利用（冪等） |
+| `NOTION_DATABASE_ID` 未設定 + 同名 DB なし | `NOTION_PARENT_PAGE_ID` 配下に DB を新規作成 |
+| `NOTION_DATABASE_ID` も `NOTION_PARENT_PAGE_ID` も未設定 | 起動時に fatal エラーで終了 |
+
+#### プロパティ定義
+
 | プロパティ | 型 | 内容 |
 |-----------|-----|------|
 | Title | title | 記事タイトル（日本語訳） |
@@ -197,7 +213,7 @@ stateDiagram-v2
 
 ### ConfigLoader
 
-**責務**: 環境変数・CLI引数・設定ファイルから `ExecutionConfig` と RSSソース一覧を組み立てる
+**責務**: 環境変数・CLI引数・設定ファイルから `ExecutionConfig` と RSSソース一覧を組み立てる。`NOTION_DATABASE_ID` が未設定の場合は `NotionSetupService` を呼び出して DB ID を解決する
 
 ```typescript
 interface RssSource {
@@ -209,10 +225,55 @@ interface RssSource {
 class ConfigLoader {
   loadExecutionConfig(args: CliArgs, env: NodeJS.ProcessEnv): ExecutionConfig;
   loadSources(): RssSource[]; // config/sources.json 読み込み
+  resolveNotionDatabaseId(env: NodeJS.ProcessEnv, notionClient: NotionClient): Promise<string>;
 }
 ```
 
-**依存**: ファイルシステム、環境変数
+**DB ID 解決ロジック**:
+1. `NOTION_DATABASE_ID` が設定済み → そのまま使用
+2. 未設定 + `NOTION_PARENT_PAGE_ID` あり → `NotionSetupService.findOrCreateDatabase()` を呼び出し
+3. 両方未設定 → `ConfigError` で exit(1)
+
+**依存**: ファイルシステム、環境変数、NotionSetupService
+
+---
+
+### NotionSetupService
+
+**責務**: 初回実行時に Notion データベースを自動生成する。既存 DB が見つかれば再利用する（冪等）
+
+```typescript
+class NotionSetupService {
+  constructor(private notionClient: NotionClient) {}
+
+  findOrCreateDatabase(parentPageId: string, date: Date): Promise<string>; // databaseId を返す
+}
+```
+
+**処理フロー**:
+1. Notion `search` API で DB 名 `YYYY-MM-DD-GenAI-Trend-News` を検索（親ページ配下）
+2. 一致する DB が見つかれば ID を返して終了
+3. 見つからない場合: `databases.create` で DB を新規作成し、ID を info ログに出力して返す
+
+**自動設定するプロパティスキーマ**:
+```typescript
+properties: {
+  'Title':       { title: {} },
+  'Source':      { select: { options: [
+                    { name: 'OpenAI', color: 'green' },
+                    { name: 'Anthropic', color: 'orange' },
+                    { name: 'Google DeepMind', color: 'blue' },
+                 ] } },
+  'URL':         { url: {} },
+  'PublishedAt': { date: {} },
+  'SyncedAt':    { date: {} },
+  'HasImage':    { checkbox: {} },
+}
+```
+
+**失敗時の振る舞い**: DB 初期化は処理の前提条件のため、失敗時は `ConfigError` を throw し全体を停止する
+
+**依存**: NotionClient
 
 ---
 
@@ -415,13 +476,17 @@ npm start -- --max-articles 2 --lookback-days 3 --test
 | `--lookback-days <n>` | `LOOKBACK_DAYS` | 7 | 収集対象とする遡り日数 |
 | `--test` | `TEST_MODE=true` | false | テストモード（テストDBへ投稿） |
 
-**必須環境変数**:
-- `GEMINI_API_KEY`
-- `NOTION_API_KEY`
-- `NOTION_DATABASE_ID`（本番DB）
-- `NOTION_DATABASE_ID_TEST`（テストモード時のみ必須）
-- `GITHUB_TOKEN`（GitHub Actions 自動注入、画像ホスト用）
-- `GITHUB_REPOSITORY`（`owner/repo` 形式、画像URL生成に使用）
+**環境変数一覧**:
+
+| 環境変数 | 必須 | 説明 |
+|---------|------|------|
+| `GEMINI_API_KEY` | 必須 | Gemini API キー |
+| `NOTION_API_KEY` | 必須 | Notion Integration トークン |
+| `NOTION_DATABASE_ID` | オプション | 投稿先 DB の ID。設定済みなら自動生成をスキップ |
+| `NOTION_PARENT_PAGE_ID` | `NOTION_DATABASE_ID` 未設定時は必須 | DB を自動生成する親ページの ID |
+| `NOTION_DATABASE_ID_TEST` | テストモード時にオプション | テストモード時の投稿先 DB の ID（未設定時は `NOTION_PARENT_PAGE_ID` 配下に自動生成） |
+| `GITHUB_TOKEN` | 必須（GitHub Actions 自動注入） | 画像を `generated-images` ブランチへアップロードするためのトークン |
+| `GITHUB_REPOSITORY` | 必須 | `owner/repo` 形式。画像 URL 生成に使用 |
 
 ---
 
@@ -438,7 +503,8 @@ src/
 │   ├── article-filter.ts
 │   ├── content-reconstructor.ts
 │   ├── image-generator.ts
-│   └── notion-publisher.ts
+│   ├── notion-publisher.ts
+│   └── notion-setup.ts           # Notion DB 自動生成・再利用
 ├── infra/
 │   ├── rss-client.ts
 │   ├── gemini-client.ts
@@ -510,7 +576,10 @@ tests/
 | 画像生成失敗・セーフティブロック | ImageGenerator | `null` を返し、Orchestratorは画像なしで投稿継続 | warn |
 | Notion API 認証エラー | NotionPublisher | 全体処理を中断（設定ミスのため継続不能） | fatal |
 | Notion 投稿失敗（個別） | NotionPublisher | 当該記事を `skipped_error` にして継続 | error |
-| 必須環境変数欠落 | ConfigLoader | 起動時に即座にエラーで終了 | fatal |
+| 必須環境変数欠落（両方未設定） | ConfigLoader | 起動時に即座にエラーで終了 | fatal |
+| Notion DB 検索失敗 | NotionSetupService | ConfigError を throw → 全体停止（DB 初期化は前提条件） | fatal |
+| Notion DB 作成失敗 | NotionSetupService | ConfigError を throw → 全体停止 | fatal |
+| 親ページが見つからない（403/404） | NotionSetupService | ConfigError を throw → 全体停止 | fatal |
 
 **Orchestrator の終了コード**:
 - `0`: 正常終了（記事0件でも成功扱い）

@@ -2,6 +2,7 @@ import { Client, APIResponseError } from '@notionhq/client';
 import type {
   BlockObjectRequest,
   CreatePageParameters,
+  CreateDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints.js';
 import { InfraError, ConfigError } from '../domain/errors.js';
 
@@ -55,6 +56,60 @@ export class NotionClient {
         throw new ConfigError(`Notion authentication failed: ${String(err)}`, err);
       }
       throw new InfraError(`Failed to create Notion page: ${String(err)}`, err);
+    }
+  }
+
+  async searchDatabase(parentPageId: string, title: string): Promise<string | null> {
+    try {
+      const response = await this.client.search({
+        query: title,
+        filter: { property: 'object', value: 'database' },
+      });
+      for (const result of response.results) {
+        if (
+          result.object === 'database' &&
+          'parent' in result &&
+          result.parent.type === 'page_id' &&
+          result.parent.page_id.replace(/-/g, '') === parentPageId.replace(/-/g, '') &&
+          'title' in result &&
+          Array.isArray(result.title) &&
+          result.title.map((t: { plain_text: string }) => t.plain_text).join('') === title
+        ) {
+          return result.id;
+        }
+      }
+      return null;
+    } catch (err) {
+      if (err instanceof APIResponseError && (err.status === 401 || err.status === 403)) {
+        throw new ConfigError(`Notion authentication failed: ${String(err)}`, err);
+      }
+      throw new InfraError(`Failed to search Notion database: ${String(err)}`, err);
+    }
+  }
+
+  async createDatabase(
+    parentPageId: string,
+    title: string,
+    properties: CreateDatabaseParameters['properties'],
+  ): Promise<string> {
+    try {
+      const db = await this.client.databases.create({
+        parent: { type: 'page_id', page_id: parentPageId },
+        title: [{ type: 'text', text: { content: title } }],
+        properties,
+      });
+      return db.id;
+    } catch (err) {
+      if (err instanceof APIResponseError && (err.status === 401 || err.status === 403)) {
+        throw new ConfigError(`Notion authentication failed: ${String(err)}`, err);
+      }
+      if (err instanceof APIResponseError && (err.status === 404 || err.status === 400)) {
+        throw new ConfigError(
+          `Failed to create Notion database: parent page not found or inaccessible (${String(err)})`,
+          err,
+        );
+      }
+      throw new InfraError(`Failed to create Notion database: ${String(err)}`, err);
     }
   }
 
