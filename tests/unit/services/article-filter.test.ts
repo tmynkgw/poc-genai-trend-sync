@@ -11,6 +11,7 @@ const baseConfig: ExecutionConfig = {
   lookbackDays: 7,
   testMode: false,
   notionDatabaseId: 'db-id',
+  notionParentPageId: 'parent-page-id',
 };
 
 function makeArticle(url: string, daysAgo: number): RawArticle {

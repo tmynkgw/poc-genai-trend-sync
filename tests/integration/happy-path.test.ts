@@ -8,6 +8,7 @@ const config: ExecutionConfig = {
   lookbackDays: 7,
   testMode: false,
   notionDatabaseId: 'test-db-id',
+  notionParentPageId: 'parent-page-id',
 };
 
 const sources: RssSource[] = [

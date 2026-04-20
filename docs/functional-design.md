@@ -183,10 +183,9 @@ stateDiagram-v2
 
 | 起動時の状態 | 動作 |
 |-------------|------|
-| `NOTION_DATABASE_ID` 設定済み | 指定 DB をそのまま使用（自動生成スキップ） |
-| `NOTION_DATABASE_ID` 未設定 + 同名 DB あり | 既存 DB を再利用（冪等） |
-| `NOTION_DATABASE_ID` 未設定 + 同名 DB なし | `NOTION_PARENT_PAGE_ID` 配下に DB を新規作成 |
-| `NOTION_DATABASE_ID` も `NOTION_PARENT_PAGE_ID` も未設定 | 起動時に fatal エラーで終了 |
+| `NOTION_PARENT_PAGE_ID` 配下に "AI Trend Sync DB" が存在する | 既存 DB を再利用（冪等） |
+| `NOTION_PARENT_PAGE_ID` 配下に "AI Trend Sync DB" が存在しない | 新規 DB を作成 |
+| `NOTION_PARENT_PAGE_ID` が未設定 | 起動時に fatal エラーで終了 |
 
 #### プロパティ定義
 
@@ -195,7 +194,8 @@ stateDiagram-v2
 | Title | title | 記事タイトル（日本語訳） |
 | Source | select | ソース企業名 (OpenAI / Anthropic / Google DeepMind) |
 | URL | url | 元記事URL（重複判定キー） |
-| PublishedAt | date | 記事公開日 |
+| Published At | date | 記事公開日 |
+| Summary | rich_text | 記事概要（overview フィールド） |
 | SyncedAt | date | 本システムで投稿した日時 |
 | HasImage | checkbox | 画像添付の有無 |
 
@@ -213,7 +213,7 @@ stateDiagram-v2
 
 ### ConfigLoader
 
-**責務**: 環境変数・CLI引数・設定ファイルから `ExecutionConfig` と RSSソース一覧を組み立てる。`NOTION_DATABASE_ID` が未設定の場合は `NotionSetupService` を呼び出して DB ID を解決する
+**責務**: 環境変数・CLI引数・設定ファイルから `ExecutionConfig` と RSSソース一覧を組み立てる。起動時に `NotionSetupService` を呼び出して `NOTION_PARENT_PAGE_ID` 配下の "AI Trend Sync DB" を検索・作成し DB ID を解決する
 
 ```typescript
 interface RssSource {
@@ -230,9 +230,9 @@ class ConfigLoader {
 ```
 
 **DB ID 解決ロジック**:
-1. `NOTION_DATABASE_ID` が設定済み → そのまま使用
-2. 未設定 + `NOTION_PARENT_PAGE_ID` あり → `NotionSetupService.findOrCreateDatabase()` を呼び出し
-3. 両方未設定 → `ConfigError` で exit(1)
+1. `NOTION_PARENT_PAGE_ID`（テストモード時は `NOTION_PARENT_PAGE_ID_TEST` を優先）を使用
+2. `NotionSetupService.findOrCreateDatabase(parentPageId)` を呼び出し、"AI Trend Sync DB" を検索または作成
+3. `NOTION_PARENT_PAGE_ID` 未設定 → `ConfigError` で exit(1)
 
 **依存**: ファイルシステム、環境変数、NotionSetupService
 
@@ -482,9 +482,8 @@ npm start -- --max-articles 2 --lookback-days 3 --test
 |---------|------|------|
 | `GEMINI_API_KEY` | 必須 | Gemini API キー |
 | `NOTION_API_KEY` | 必須 | Notion Integration トークン |
-| `NOTION_DATABASE_ID` | オプション | 投稿先 DB の ID。設定済みなら自動生成をスキップ |
-| `NOTION_PARENT_PAGE_ID` | `NOTION_DATABASE_ID` 未設定時は必須 | DB を自動生成する親ページの ID |
-| `NOTION_DATABASE_ID_TEST` | テストモード時にオプション | テストモード時の投稿先 DB の ID（未設定時は `NOTION_PARENT_PAGE_ID` 配下に自動生成） |
+| `NOTION_PARENT_PAGE_ID` | 必須 | "AI Trend Sync DB" を自動生成・再利用する親ページ ID |
+| `NOTION_PARENT_PAGE_ID_TEST` | テストモード時にオプション | テストモード時の親ページ ID（未設定時は `NOTION_PARENT_PAGE_ID` を使用） |
 | `GITHUB_TOKEN` | 必須（GitHub Actions 自動注入） | 画像を `generated-images` ブランチへアップロードするためのトークン |
 | `GITHUB_REPOSITORY` | 必須 | `owner/repo` 形式。画像 URL 生成に使用 |
 

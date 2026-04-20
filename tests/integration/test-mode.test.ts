@@ -12,6 +12,7 @@ describe('Orchestrator test mode', () => {
       lookbackDays: 3,
       testMode: true,
       notionDatabaseId: 'test-db-id',
+      notionParentPageId: 'parent-page-id',
     };
 
     const article: RawArticle = {

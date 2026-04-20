@@ -9,6 +9,7 @@ const config: ExecutionConfig = {
   lookbackDays: 7,
   testMode: false,
   notionDatabaseId: 'db-id',
+  notionParentPageId: 'parent-page-id',
 };
 
 const sources: RssSource[] = [{ id: 'openai', name: 'OpenAI', feedUrl: 'url' }];
