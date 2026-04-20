@@ -56,9 +56,10 @@ export class ConfigLoader {
     env: z.infer<typeof envSchema>,
     notionClient: NotionClient,
     testMode: boolean,
+    date: Date = new Date(),
   ): Promise<string> {
     const setupService = new NotionSetupService(notionClient);
-    return setupService.findOrCreateDatabase(this.resolveParentPageId(env, testMode));
+    return setupService.findOrCreateDatabase(this.resolveParentPageId(env, testMode), date);
   }
 
   private resolveParentPageId(env: z.infer<typeof envSchema>, testMode: boolean): string {

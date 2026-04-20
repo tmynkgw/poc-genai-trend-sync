@@ -39,13 +39,14 @@ describe('ConfigLoader', () => {
   describe('resolveNotionDatabaseId', () => {
     it('通常モードで NOTION_PARENT_PAGE_ID を使用して DB を解決する', async () => {
       const { NotionSetupService } = await import('../services/notion-setup.js');
+      const fixedDate = new Date('2026-04-20');
 
-      const result = await loader.resolveNotionDatabaseId(BASE_ENV, mockClient, false);
+      const result = await loader.resolveNotionDatabaseId(BASE_ENV, mockClient, false, fixedDate);
 
       expect(result).toBe('resolved-db-id');
       expect(NotionSetupService).toHaveBeenCalledWith(mockClient);
       const instance = vi.mocked(NotionSetupService).mock.results[0].value;
-      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('parent-page-id');
+      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('parent-page-id', fixedDate);
     });
 
     it('テストモードで NOTION_PARENT_PAGE_ID_TEST を優先使用する', async () => {
@@ -54,20 +55,22 @@ describe('ConfigLoader', () => {
         ...BASE_ENV,
         NOTION_PARENT_PAGE_ID_TEST: 'test-parent-page-id',
       };
+      const fixedDate = new Date('2026-04-20');
 
-      await loader.resolveNotionDatabaseId(envWithTest, mockClient, true);
+      await loader.resolveNotionDatabaseId(envWithTest, mockClient, true, fixedDate);
 
       const instance = vi.mocked(NotionSetupService).mock.results[0].value;
-      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('test-parent-page-id');
+      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('test-parent-page-id', fixedDate);
     });
 
     it('テストモードで NOTION_PARENT_PAGE_ID_TEST が未設定の場合は NOTION_PARENT_PAGE_ID を使用する', async () => {
       const { NotionSetupService } = await import('../services/notion-setup.js');
+      const fixedDate = new Date('2026-04-20');
 
-      await loader.resolveNotionDatabaseId(BASE_ENV, mockClient, true);
+      await loader.resolveNotionDatabaseId(BASE_ENV, mockClient, true, fixedDate);
 
       const instance = vi.mocked(NotionSetupService).mock.results[0].value;
-      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('parent-page-id');
+      expect(instance.findOrCreateDatabase).toHaveBeenCalledWith('parent-page-id', fixedDate);
     });
   });
 });

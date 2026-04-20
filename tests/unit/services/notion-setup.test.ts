@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NotionSetupService, DB_TITLE } from '../../../src/services/notion-setup.js';
+import { NotionSetupService, getDbTitle } from '../../../src/services/notion-setup.js';
 import { ConfigError, InfraError } from '../../../src/domain/errors.js';
 
 const mockNotionClient = {
@@ -20,17 +20,20 @@ describe('NotionSetupService.findOrCreateDatabase', () => {
     vi.clearAllMocks();
   });
 
-  it('DB_TITLE が "AI Trend Sync DB" であること', () => {
-    expect(DB_TITLE).toBe('AI Trend Sync DB');
+  const fixedDate = new Date('2026-04-20');
+  const expectedTitle = '2026-04-20-AI News';
+
+  it('getDbTitle が日付を "YYYY-MM-DD-AI News" 形式にフォーマットする', () => {
+    expect(getDbTitle(fixedDate)).toBe(expectedTitle);
   });
 
   it('同名 DB が存在する場合は既存 ID を返す', async () => {
     mockNotionClient.searchDatabase.mockResolvedValue('existing-db-id');
 
-    const result = await service.findOrCreateDatabase(PARENT_PAGE_ID);
+    const result = await service.findOrCreateDatabase(PARENT_PAGE_ID, fixedDate);
 
     expect(result).toBe('existing-db-id');
-    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith(PARENT_PAGE_ID, DB_TITLE);
+    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith(PARENT_PAGE_ID, expectedTitle);
     expect(mockNotionClient.createDatabase).not.toHaveBeenCalled();
   });
 
@@ -38,12 +41,12 @@ describe('NotionSetupService.findOrCreateDatabase', () => {
     mockNotionClient.searchDatabase.mockResolvedValue(null);
     mockNotionClient.createDatabase.mockResolvedValue('new-db-id');
 
-    const result = await service.findOrCreateDatabase(PARENT_PAGE_ID);
+    const result = await service.findOrCreateDatabase(PARENT_PAGE_ID, fixedDate);
 
     expect(result).toBe('new-db-id');
     expect(mockNotionClient.createDatabase).toHaveBeenCalledWith(
       PARENT_PAGE_ID,
-      DB_TITLE,
+      expectedTitle,
       expect.objectContaining({
         Title: { title: {} },
         Source: expect.objectContaining({ select: expect.any(Object) }),
@@ -60,7 +63,7 @@ describe('NotionSetupService.findOrCreateDatabase', () => {
     mockNotionClient.searchDatabase.mockResolvedValue(null);
     mockNotionClient.createDatabase.mockResolvedValue('new-db-id');
 
-    await service.findOrCreateDatabase(PARENT_PAGE_ID);
+    await service.findOrCreateDatabase(PARENT_PAGE_ID, fixedDate);
 
     const [, , properties] = mockNotionClient.createDatabase.mock.calls[0];
     expect(properties).toHaveProperty('Published At');
@@ -70,13 +73,13 @@ describe('NotionSetupService.findOrCreateDatabase', () => {
   it('searchDatabase が ConfigError を throw した場合はそのまま伝播する', async () => {
     mockNotionClient.searchDatabase.mockRejectedValue(new ConfigError('auth failed'));
 
-    await expect(service.findOrCreateDatabase(PARENT_PAGE_ID)).rejects.toThrow(ConfigError);
+    await expect(service.findOrCreateDatabase(PARENT_PAGE_ID, fixedDate)).rejects.toThrow(ConfigError);
   });
 
   it('createDatabase が InfraError を throw した場合はそのまま伝播する', async () => {
     mockNotionClient.searchDatabase.mockResolvedValue(null);
     mockNotionClient.createDatabase.mockRejectedValue(new InfraError('create failed'));
 
-    await expect(service.findOrCreateDatabase(PARENT_PAGE_ID)).rejects.toThrow(InfraError);
+    await expect(service.findOrCreateDatabase(PARENT_PAGE_ID, fixedDate)).rejects.toThrow(InfraError);
   });
 });
