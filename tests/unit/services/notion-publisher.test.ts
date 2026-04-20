@@ -16,6 +16,7 @@ const config: ExecutionConfig = {
   lookbackDays: 7,
   testMode: false,
   notionDatabaseId: 'db-id',
+  notionParentPageId: 'parent-page-id',
 };
 
 const article: RawArticle = {

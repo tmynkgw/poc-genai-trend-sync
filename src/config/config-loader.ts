@@ -37,18 +37,18 @@ export class ConfigLoader {
     return result.data;
   }
 
-  loadExecutionConfig(args: CliArgs, env: z.infer<typeof envSchema>): Omit<ExecutionConfig, 'notionDatabaseId'> & { notionDatabaseId: string | undefined; notionParentPageId?: string } {
+  loadExecutionConfig(
+    args: CliArgs,
+    env: z.infer<typeof envSchema>,
+    notionDatabaseId: string,
+  ): ExecutionConfig {
     const testMode = args.test ?? env.TEST_MODE;
-    const notionDatabaseId = testMode
-      ? (env.NOTION_DATABASE_ID_TEST ?? env.NOTION_DATABASE_ID)
-      : env.NOTION_DATABASE_ID;
-
     return {
       maxArticles: args.maxArticles ?? env.MAX_ARTICLES,
       lookbackDays: args.lookbackDays ?? env.LOOKBACK_DAYS,
       testMode,
       notionDatabaseId,
-      notionParentPageId: env.NOTION_PARENT_PAGE_ID,
+      notionParentPageId: this.resolveParentPageId(env, testMode),
     };
   }
 
@@ -57,23 +57,14 @@ export class ConfigLoader {
     notionClient: NotionClient,
     testMode: boolean,
   ): Promise<string> {
-    const dbId = testMode
-      ? (env.NOTION_DATABASE_ID_TEST ?? env.NOTION_DATABASE_ID)
-      : env.NOTION_DATABASE_ID;
-
-    if (dbId) {
-      return dbId;
-    }
-
-    const parentPageId = env.NOTION_PARENT_PAGE_ID;
-    if (!parentPageId) {
-      throw new ConfigError(
-        'NOTION_DATABASE_ID または NOTION_PARENT_PAGE_ID のいずれかを設定してください',
-      );
-    }
-
     const setupService = new NotionSetupService(notionClient);
-    return setupService.findOrCreateDatabase(parentPageId, new Date());
+    return setupService.findOrCreateDatabase(this.resolveParentPageId(env, testMode));
+  }
+
+  private resolveParentPageId(env: z.infer<typeof envSchema>, testMode: boolean): string {
+    return testMode
+      ? (env.NOTION_PARENT_PAGE_ID_TEST ?? env.NOTION_PARENT_PAGE_ID)
+      : env.NOTION_PARENT_PAGE_ID;
   }
 
   loadSources(env: z.infer<typeof envSchema>): RssSource[] {

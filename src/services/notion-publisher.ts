@@ -47,6 +47,7 @@ export class NotionPublisher {
       imageUrl !== null,
       imageUrl,
       blocks,
+      content.overview,
     );
 
     try {

@@ -29,11 +29,6 @@ async function main(): Promise<void> {
     throw err;
   }
 
-  const partialConfig = configLoader.loadExecutionConfig(
-    { maxArticles: args.maxArticles, lookbackDays: args.lookbackDays, test: args.test },
-    env,
-  );
-
   let sources: ReturnType<ConfigLoader['loadSources']>;
   try {
     sources = configLoader.loadSources(env);
@@ -45,6 +40,7 @@ async function main(): Promise<void> {
     throw err;
   }
 
+  const testMode = args.test ?? env.TEST_MODE;
   const rssClient = new RssClient();
   const geminiClient = new GeminiClient(env.GEMINI_API_KEY);
   const imageGenClient = new ImageGenClient(env.GEMINI_API_KEY);
@@ -52,11 +48,7 @@ async function main(): Promise<void> {
 
   let notionDatabaseId: string;
   try {
-    notionDatabaseId = await configLoader.resolveNotionDatabaseId(
-      env,
-      notionClient,
-      partialConfig.testMode,
-    );
+    notionDatabaseId = await configLoader.resolveNotionDatabaseId(env, notionClient, testMode);
   } catch (err) {
     if (err instanceof ConfigError) {
       logger.fatal({ component: 'CLI', err }, err.message);
@@ -65,7 +57,12 @@ async function main(): Promise<void> {
     throw err;
   }
 
-  const config = { ...partialConfig, notionDatabaseId };
+  const config = configLoader.loadExecutionConfig(
+    { maxArticles: args.maxArticles, lookbackDays: args.lookbackDays, test: args.test },
+    env,
+    notionDatabaseId,
+  );
+
   const imageHostClient = new ImageHostClient(env.GITHUB_TOKEN, env.GITHUB_REPOSITORY);
 
   const collector = new ArticleCollector(rssClient);

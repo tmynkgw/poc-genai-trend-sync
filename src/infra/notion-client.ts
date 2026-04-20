@@ -123,6 +123,7 @@ export class NotionClient {
     hasImage: boolean,
     imageUrl: string | null,
     blocks: BlockObjectRequest[],
+    summary: string,
   ): CreatePageParameters {
     const coverImage = imageUrl
       ? { cover: { type: 'external' as const, external: { url: imageUrl } } }
@@ -135,9 +136,10 @@ export class NotionClient {
         title: { title: [{ text: { content: title } }] },
         Source: { select: { name: source } },
         URL: { url },
-        PublishedAt: { date: { start: publishedAt.toISOString() } },
+        'Published At': { date: { start: publishedAt.toISOString() } },
         SyncedAt: { date: { start: syncedAt.toISOString() } },
         HasImage: { checkbox: hasImage },
+        Summary: { rich_text: [{ type: 'text', text: { content: summary } }] },
       },
       children: blocks,
     };
