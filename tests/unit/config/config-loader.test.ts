@@ -149,27 +149,30 @@ describe('ConfigLoader.resolveNotionDatabaseId', () => {
 
   it('通常モードで NOTION_PARENT_PAGE_ID を使って findOrCreateDatabase を呼ぶ', async () => {
     mockNotionClient.searchDatabase.mockResolvedValue('auto-db-id');
+    const fixedDate = new Date('2026-04-20');
 
-    const result = await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, false);
+    const result = await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, false, fixedDate);
 
     expect(result).toBe('auto-db-id');
-    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('parent-page-id', 'AI Trend Sync DB');
+    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('parent-page-id', '2026-04-20-AI News');
   });
 
   it('テストモード時は NOTION_PARENT_PAGE_ID_TEST を使って findOrCreateDatabase を呼ぶ', async () => {
     const envWithTest = { ...baseEnv, NOTION_PARENT_PAGE_ID_TEST: 'test-parent-id' };
     mockNotionClient.searchDatabase.mockResolvedValue('test-db-id');
+    const fixedDate = new Date('2026-04-20');
 
-    await loader.resolveNotionDatabaseId(envWithTest, mockNotionClient as never, true);
+    await loader.resolveNotionDatabaseId(envWithTest, mockNotionClient as never, true, fixedDate);
 
-    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('test-parent-id', 'AI Trend Sync DB');
+    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('test-parent-id', '2026-04-20-AI News');
   });
 
   it('テストモードで NOTION_PARENT_PAGE_ID_TEST 未設定時は NOTION_PARENT_PAGE_ID を使用する', async () => {
     mockNotionClient.searchDatabase.mockResolvedValue('fallback-db-id');
+    const fixedDate = new Date('2026-04-20');
 
-    await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, true);
+    await loader.resolveNotionDatabaseId(baseEnv, mockNotionClient as never, true, fixedDate);
 
-    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('parent-page-id', 'AI Trend Sync DB');
+    expect(mockNotionClient.searchDatabase).toHaveBeenCalledWith('parent-page-id', '2026-04-20-AI News');
   });
 });

@@ -197,7 +197,7 @@ permissions:
 **必要な Secrets**:
 - `GEMINI_API_KEY`
 - `NOTION_API_KEY`
-- `NOTION_PARENT_PAGE_ID`（必須。"AI Trend Sync DB" を自動生成・再利用する親ページ ID）
+- `NOTION_PARENT_PAGE_ID`（必須。実行日付 DB `YYYY-MM-DD-AI News` を自動生成・再利用する親ページ ID）
 - `NOTION_PARENT_PAGE_ID_TEST`（テストモード時にオプション。未設定時は `NOTION_PARENT_PAGE_ID` を使用）
 
 **ワークフローの基本ステップ**:
@@ -257,7 +257,7 @@ GitHub Actions `ubuntu-latest`（2core, 7GB RAM, 14GB SSD）を前提。
 |---------|---------|-------------------|
 | `GEMINI_API_KEY` | GitHub Secrets | `process.env.GEMINI_API_KEY`（zodで必須検証） |
 | `NOTION_API_KEY` | GitHub Secrets | 同上 |
-| `NOTION_PARENT_PAGE_ID` | GitHub Secrets | 必須。"AI Trend Sync DB" を自動生成・再利用する親ページ ID |
+| `NOTION_PARENT_PAGE_ID` | GitHub Secrets | 必須。実行日付 DB `YYYY-MM-DD-AI News` を自動生成・再利用する親ページ ID |
 | `NOTION_PARENT_PAGE_ID_TEST` | GitHub Secrets | テストモード時にオプション。未設定時は `NOTION_PARENT_PAGE_ID` を使用 |
 | `GITHUB_TOKEN` | Actions 自動注入 | 画像アップロード用、`contents: write` 権限のみ付与 |
 
@@ -326,7 +326,7 @@ GitHub Actions `ubuntu-latest`（2core, 7GB RAM, 14GB SSD）を前提。
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   NOTION_API_KEY: z.string().min(1),
-  NOTION_PARENT_PAGE_ID: z.string().min(1),              // 必須: "AI Trend Sync DB" を生成・再利用する親ページ ID
+  NOTION_PARENT_PAGE_ID: z.string().min(1),              // 必須: 実行日付 DB `YYYY-MM-DD-AI News` を生成・再利用する親ページ ID
   NOTION_PARENT_PAGE_ID_TEST: z.string().min(1).optional(), // テストモード時の親ページ ID（任意）
   GITHUB_TOKEN: z.string().min(1),
   GITHUB_REPOSITORY: z.string().regex(/^[^/]+\/[^/]+$/), // owner/repo
