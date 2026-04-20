@@ -51,8 +51,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
-          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          NOTION_DATABASE_ID_TEST: ${{ secrets.NOTION_DATABASE_ID_TEST }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_PARENT_PAGE_ID_TEST: ${{ secrets.NOTION_PARENT_PAGE_ID_TEST }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           MAX_ARTICLES: ${{ github.event.inputs.max_articles || '5' }}
